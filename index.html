@@ -31,7 +31,7 @@
       cursor: pointer;
       background-color: #2b2b2b;
       transition: background-color 0.2s;
-      font-size: 0.9em;
+      font-size: 0.8em;
     }
     .cell.marked {
       background-color: #ff4c4c;
@@ -236,7 +236,12 @@
 
     function shareOnTwitter() {
       const lines = getBingoLines();
-      const text = `ブラック企業ビンゴ\n${lines}列ビンゴしました… 弊社はブラックなんでしょうか？\n#ブラック企業ビンゴ`;
+      let text;
+      if (lines === 0) {
+        text = `ブラック企業ビンゴ\n0列ビンゴでした！弊社は超絶ホワイトです！\n#ブラック企業ビンゴ`;
+      } else {
+        text = `ブラック企業ビンゴ\n${lines}列ビンゴしました… 弊社はブラックなんでしょうか？\n#ブラック企業ビンゴ`;
+      }
       const url = encodeURIComponent(location.href);
       const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
       window.open(tweetUrl, '_blank');
