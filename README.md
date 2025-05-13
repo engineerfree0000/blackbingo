@@ -1,3 +1,3 @@
-# blackbingo.github.io
+# blackbingo
 
 This repository is for GitHub Pages deployment.
