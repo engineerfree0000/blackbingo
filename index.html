@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ブラック企業ビンゴ</title>
+  <style>
+    body {
+      background-color: #1a1a1a;
+      color: #eee;
+      font-family: 'Yu Gothic', sans-serif;
+      text-align: center;
+      position: relative;
+    }
+    h1 {
+      margin-top: 30px;
+      color: #ff4c4c;
+      text-shadow: 1px 1px #000;
+    }
+    .bingo {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      margin: 20px auto;
+      width: 90%;
+      max-width: 800px;
+    }
+    .cell {
+      border: 1px solid #444;
+      padding: 15px;
+      cursor: pointer;
+      background-color: #2b2b2b;
+      transition: background-color 0.2s;
+      font-size: 0.9em;
+    }
+    .cell.marked {
+      background-color: #ff4c4c;
+      color: #fff;
+      text-decoration: line-through;
+    }
+    .cell.bingo-line {
+      box-shadow: 0 0 10px 4px yellow;
+      border: 2px solid yellow;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #444;
+      color: #eee;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #666;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #ffd700;
+    }
+    #status.danger {
+      color: #ff4c4c;
+      font-weight: bold;
+    }
+    #explosion {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
+    }
+    #explosion img {
+      max-width: 80vw;
+      max-height: 50vh;
+      animation: shake 0.6s ease-in-out infinite;
+    }
+    @keyframes shake {
+      0%   { transform: rotate(-2deg); }
+      50%  { transform: rotate(2deg); }
+      100% { transform: rotate(-2deg); }
+    }
+    #retire-button {
+      display: none;
+      font-size: 1.2em;
+      font-weight: bold;
+      background: linear-gradient(45deg, #ff4c4c, #ff9900);
+      border: 2px solid #fff;
+      box-shadow: 0 0 15px rgba(255, 255, 0, 0.7);
+      color: #fff;
+      padding: 15px 30px;
+    }
+    @media screen and (max-width: 480px) {
+      .cell {
+        font-size: 0.7em;
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>ブラック企業ビンゴ</h1>
+  <div class="bingo" id="bingo"></div>
+  <div id="status"></div>
+  <div id="explosion">
+    <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" alt="退職"/>
+  </div>
+  <button id="retire-button" onclick="retireOnTwitter()">退職する</button>
+  <button id="share-button" onclick="shareOnTwitter()">結果をツイート</button>
+
+  <script>
+    const phrases = [
+      "終電後も仕事", "常にサービス残業", "深夜にチャットやメールが来る", "飲み会参加強制", "怒声罵声が飛び交っている",
+      "仕事場で泣いている人がいる", "全員目が死んでる", "法律スレスレの仕事内容", "仕事ミスると罰金", "パワハラ・暴力",
+      "残業時間＞勤務時間", "労基が都市伝説", "薄給", "備品が自腹", "上司が家に来る",
+      "椅子がパイプ椅子", "取っ組み合いの喧嘩が起きてる", "部屋/人が臭い", "メールで名指しで説教してくる", "冷暖房禁止",
+      "セクハラ", "有給使って土日出社", "退職させてくれない", "社内不倫が日常茶飯事", "謎の社訓朗読と謎体操がある"
+    ];
+
+    const bingo = document.getElementById('bingo');
+    const status = document.getElementById('status');
+    const explosion = document.getElementById('explosion');
+    const retireButton = document.getElementById('retire-button');
+    let explosionTimer = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateStatus(); 
+    });
+    phrases.forEach((text, index) => {
+      const div = document.createElement('div');
+      div.className = 'cell';
+      div.innerText = text;
+      div.dataset.index = index;
+      div.onclick = () => {
+        div.classList.toggle('marked');
+        updateStatus();
+      };
+      bingo.appendChild(div);
+    });
+
+    function highlightLines(lineIndexes) {
+      document.querySelectorAll('.cell').forEach(cell => cell.classList.remove('bingo-line'));
+      lineIndexes.flat().forEach(i => {
+        document.querySelector(`.cell[data-index="${i}"]`).classList.add('bingo-line');
+      });
+    }
+
+    function getBingoLines() {
+      const size = 5;
+      const cells = document.querySelectorAll('.cell');
+      const grid = [...cells].map(cell => cell.classList.contains('marked'));
+      let lines = 0;
+      const winningLines = [];
+
+      for (let i = 0; i < size; i++) {
+        const row = [...Array(size)].map((_, j) => i * size + j);
+        if (row.every(idx => grid[idx])) {
+          lines++;
+          winningLines.push(row);
+        }
+      }
+
+      for (let i = 0; i < size; i++) {
+        const col = [...Array(size)].map((_, j) => j * size + i);
+        if (col.every(idx => grid[idx])) {
+          lines++;
+          winningLines.push(col);
+        }
+      }
+
+      const diag1 = [0, 6, 12, 18, 24];
+      if (diag1.every(idx => grid[idx])) {
+        lines++;
+        winningLines.push(diag1);
+      }
+
+      const diag2 = [4, 8, 12, 16, 20];
+      if (diag2.every(idx => grid[idx])) {
+        lines++;
+        winningLines.push(diag2);
+      }
+
+      highlightLines(winningLines);
+      return lines;
+    }
+
+    function updateStatus() {
+      const lines = getBingoLines();
+      const marked = document.querySelectorAll('.cell.marked').length;
+      const allMarked = marked === 25;
+
+      if (allMarked) {
+        status.textContent = `全制覇！さっさと退職して次に行こう`;
+        status.classList.add('danger');
+        explosion.style.display = 'block';
+        retireButton.style.display = 'inline-block';
+        document.getElementById("share-button").style.display = "none";
+        if (explosionTimer) clearTimeout(explosionTimer);
+        explosionTimer = setTimeout(() => {
+          explosion.style.display = 'none';
+        }, 6000);
+      } else {
+        status.classList.remove('danger');
+        explosion.style.display = 'none';
+        retireButton.style.display = 'none';
+        document.getElementById("share-button").style.display = "inline-block";
+
+        if (lines >= 10) {
+          status.textContent = `${lines}列ビンゴ！そして伝説へ…`;
+        } else if (lines >= 9) {
+          status.textContent = `${lines}列ビンゴ！労基案件フルコンボだドン！`;
+        } else if (lines >= 8) {
+          status.textContent = `${lines}列ビンゴ！生きているだけで偉い！`;
+        } else if (lines >= 7) {
+          status.textContent = `${lines}列ビンゴ！どこに出しても恥ずかしくないブラック！！`;
+        } else if (lines >= 6) {
+          status.textContent = `${lines}列ビンゴ！ようこそブラックの入口へ！！`;
+        } else if (lines >= 5) {
+          status.textContent = `${lines}列ビンゴ！もしかして…私の会社ってブラック？`;
+        } else if (lines >= 4) {
+          status.textContent = `${lines}列ビンゴ！若干雲行きがあやしい`;
+        } else if (lines >= 3) {
+          status.textContent = `${lines}列ビンゴ！まぁまぁスタンダード`;
+        } else if (lines >= 2) {
+          status.textContent = `${lines}列ビンゴ！まだ舞える！`;
+        } else if (lines >= 1) {
+          status.textContent = `${lines}列ビンゴ！序の口！`;
+        } else {
+          status.textContent = `現在 ${lines} 列ビンゴ  素晴らしいホワイト企業`;
+        }
+      }
+    }
+
+    function shareOnTwitter() {
+      const lines = getBingoLines();
+      const text = `ブラック企業ビンゴ\n${lines}列ビンゴしました… 弊社はブラックなんでしょうか？\n#ブラック企業ビンゴ`;
+      const url = encodeURIComponent(location.href);
+      const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
+      window.open(tweetUrl, '_blank');
+    }
+
+    function retireOnTwitter() {
+      const text = "ブラック企業ビンゴ全マス達成！もう退職してやる！！ #ブラック企業ビンゴ";
+      const url = encodeURIComponent(location.href);
+      const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
+      window.open(tweetUrl, '_blank');
+    }
+
+    updateStatus();
+  </script>
+</body>
+</html>
